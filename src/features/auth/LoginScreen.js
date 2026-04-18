@@ -1,5 +1,5 @@
 // src/features/auth/LoginScreen.js
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, StatusBar,
@@ -9,11 +9,6 @@ import { AuthContext } from '../../core/auth/AuthContext';
 import { Button, Input } from '../../core/ui';
 import { Colors, Spacing, FontSize, Radius } from '../../core/theme/colors';
 import api from '../../core/api/api';
-
-GoogleSignin.configure({
-  webClientId: '1004287239013-pagt7k3bcalknu71su6n240g951f9622.apps.googleusercontent.com',
-  offlineAccess: false,
-});
 
 export default function LoginScreen({ navigation }) {
   const { login } = useContext(AuthContext);
@@ -29,6 +24,14 @@ export default function LoginScreen({ navigation }) {
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState('');
   const [completedSteps, setCompletedSteps] = useState(new Set());
+
+  // ✅ FIX: Moved configuration inside useEffect so it initializes after native modules are ready
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '1004287239013-pagt7k3bcalknu71su6n240g951f9622.apps.googleusercontent.com',
+      offlineAccess: false,
+    });
+  }, []);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -72,14 +75,23 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.data?.idToken || userInfo.idToken;
+      const response = await GoogleSignin.signIn();
+      
+      // ✅ FIX: v16 handles cancellation by returning a type instead of throwing an error
+      if (response.type === 'cancelled') {
+        setLoading(false);
+        return; // user cancelled — do nothing
+      }
+
+      // ✅ FIX: Ensure idToken fallback covers the new data structure appropriately
+      const idToken = response.data?.idToken || response.idToken;
       if (!idToken) throw new Error('No ID token received from Google');
 
       const { data: res } = await api.post('/auth/google', {
         credential: idToken,
       });
       const payload = res.data || res;
+      
       if (payload.mfaRequired) {
         setMfaData(payload.mfaChallenge);
         setMfaStep(getFirstPendingStep(payload.mfaChallenge, new Set()));
@@ -87,8 +99,10 @@ export default function LoginScreen({ navigation }) {
         await login(payload);
       }
     } catch (e) {
+      // Retained the legacy catch check just for older android SDK throw scenarios
       if (e.code === statusCodes.SIGN_IN_CANCELLED) {
-        // user cancelled — do nothing
+         setLoading(false);
+         return; 
       } else if (e.code === statusCodes.IN_PROGRESS) {
         setError('Google Sign-In is already in progress');
       } else {
