@@ -25,20 +25,23 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   /**
-   * Called after /auth/login with the unwrapped `res.data` payload:
+   * Called after a successful login (password-only or MFA complete).
+   *
+   * Accepts the unwrapped payload:
    *   { accessToken, refreshToken, user: { id, name, email, phone, ... } }
+   *
+   * Also works with Google login which returns the same shape.
    */
   const login = async (payload) => {
-    const token =
-      payload?.accessToken ||
-      payload?.token;
-
+    const token = payload?.accessToken || payload?.token;
     if (!token) throw new Error('Token not received from server');
 
-    // Backend UserResponseDTO uses `name` (not fullName)
     const user = payload?.user || { name: 'User' };
 
     await AsyncStorage.setItem('userToken', token);
+    if (payload?.refreshToken) {
+      await AsyncStorage.setItem('refreshToken', payload.refreshToken);
+    }
     await AsyncStorage.setItem('userInfo', JSON.stringify(user));
 
     setUserToken(token);
@@ -54,6 +57,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('userInfo');
     } catch (_) {}
     setUserToken(null);

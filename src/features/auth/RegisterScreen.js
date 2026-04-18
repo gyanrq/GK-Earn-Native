@@ -59,7 +59,7 @@ export default function RegisterScreen({ navigation }) {
         <Text style={styles.successIcon}>🎉</Text>
         <Text style={styles.successTitle}>Account Created!</Text>
         <Text style={styles.successMsg}>
-          Your EarnX3 account is ready. Sign in to start earning!
+          Your GK Earn account is ready. Sign in to start earning!
         </Text>
         <Button title="Go to Login" onPress={() => navigation.navigate('Login')} style={{ marginTop: 24 }} />
       </View>
@@ -75,7 +75,7 @@ export default function RegisterScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.logo}>💎 EarnX3</Text>
+          <Text style={styles.logo}>💎 GK Earn</Text>
           <Text style={styles.tagline}>Join & Start Earning</Text>
         </View>
 

@@ -1,4 +1,4 @@
-package com.earnx3app
+package com.gkearnapp
 
 import android.app.Application
 import com.facebook.react.PackageList

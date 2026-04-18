@@ -1,4 +1,4 @@
-// Package: com.earnx3app
+// Package: com.gkearnapp
 // File: src/core/ui/Spinner.js
 
 import React from 'react';

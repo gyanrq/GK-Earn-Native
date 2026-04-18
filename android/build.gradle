@@ -15,19 +15,17 @@ buildscript {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("com.google.gms:google-services:4.4.4")
     }
 }
 
 apply plugin: "com.facebook.react.rootproject"
 
-
 allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' } // Keep this, it's useful!
-
-        // 👇 You still MUST add this specific local path for Async Storage v3+ 👇
+        maven { url 'https://jitpack.io' }
         maven {
             url("$rootDir/../node_modules/@react-native-async-storage/async-storage/android/local_repo")
         }

@@ -1,9 +1,4 @@
 // src/features/dashboard/DashboardScreen.js
-// FIXES:
-//  1. API returns totalCredits (not creditBalance), totalReferrals (not referralCount)
-//  2. emailVerified field added to UserDashboardDTO (backend fix required - see backend/)
-//  3. More dynamic, stylish UI with gradient header, animated balance, notification badge
-
 import React, { useState, useCallback, useContext, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, RefreshControl,
@@ -86,7 +81,7 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.heroTop}>
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <Text style={styles.greeting}>Hi, {name} 👋</Text>
-            <Text style={styles.subGreeting}>Welcome back to EarnX3!</Text>
+            <Text style={styles.subGreeting}>Welcome back to GK Earn!</Text>
           </Animated.View>
           <TouchableOpacity
             onPress={() => navigation.navigate('Notifications')}

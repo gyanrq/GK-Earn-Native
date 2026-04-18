@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1004287239013",
+    "project_id": "gkearn",
+    "storage_bucket": "gkearn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1004287239013:android:375e844fe01c1556fef78c",
+        "android_client_info": {
+          "package_name": "com.gkearnapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1004287239013-pagt7k3bcalknu71su6n240g951f9622.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7dpDgbL1ywJGISOEYlSxvMI7ZCnfe8cQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1004287239013-pagt7k3bcalknu71su6n240g951f9622.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

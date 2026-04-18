@@ -45,8 +45,8 @@ export default function ReferralScreen() {
     const code = userInfo?.referralCode || '';
     try {
       await Share.share({
-        message: `🎉 Join EarnX3 and start earning real money!\n\nUse my referral code: ${code}\n\nSign up here: https://earnx3.com/register?ref=${code}`,
-        title: 'Join EarnX3 - Earn Real Money!',
+        message: `🎉 Join GK Earn and start earning real money!\n\nUse my referral code: ${code}\n\nSign up here: https://gkearn.com/register?ref=${code}`,
+        title: 'Join GK Earn - Earn Real Money!',
       });
     } catch (_) {}
   };
