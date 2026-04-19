@@ -28,9 +28,9 @@ export default function LoginScreen({ navigation }) {
   // ✅ FIX: Moved configuration inside useEffect so it initializes after native modules are ready
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId: '1004287239013-pagt7k3bcalknu71su6n240g951f9622.apps.googleusercontent.com',
-      offlineAccess: false,
-    });
+  webClientId: '282729654983-58lk2ggr2a37ujfr0496782dimplvflr.apps.googleusercontent.com',
+  offlineAccess: true,
+});
   }, []);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
@@ -69,49 +69,62 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  // ── Google Login ───────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      
-      // ✅ FIX: v16 handles cancellation by returning a type instead of throwing an error
-      if (response.type === 'cancelled') {
-        setLoading(false);
-        return; // user cancelled — do nothing
-      }
+  setError('');
+  setLoading(true);
+  try {
+    console.log('🔵 STEP 1: Checking Play Services...');
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    console.log('✅ STEP 1: Play Services OK');
 
-      // ✅ FIX: Ensure idToken fallback covers the new data structure appropriately
-      const idToken = response.data?.idToken || response.idToken;
-      if (!idToken) throw new Error('No ID token received from Google');
+    console.log('🔵 STEP 2: Starting Google SignIn...');
+    const response = await GoogleSignin.signIn();
+    console.log('✅ STEP 2: Response type:', response.type);
+    console.log('✅ STEP 2: Full response:', JSON.stringify(response));
 
-      const { data: res } = await api.post('/auth/google', {
-        credential: idToken,
-      });
-      const payload = res.data || res;
-      
-      if (payload.mfaRequired) {
-        setMfaData(payload.mfaChallenge);
-        setMfaStep(getFirstPendingStep(payload.mfaChallenge, new Set()));
-      } else {
-        await login(payload);
-      }
-    } catch (e) {
-      // Retained the legacy catch check just for older android SDK throw scenarios
-      if (e.code === statusCodes.SIGN_IN_CANCELLED) {
-         setLoading(false);
-         return; 
-      } else if (e.code === statusCodes.IN_PROGRESS) {
-        setError('Google Sign-In is already in progress');
-      } else {
-        setError(e.response?.data?.message || e.message || 'Google sign-in failed');
-      }
-    } finally {
+    if (response.type === 'cancelled') {
       setLoading(false);
+      return;
     }
-  };
+
+    const idToken = response.data?.idToken || response.idToken;
+    console.log('🔵 STEP 3: idToken exists?', !!idToken);
+    if (!idToken) throw new Error('No ID token received from Google');
+
+    console.log('🔵 STEP 4: Calling backend /auth/google...');
+    const { data: res } = await api.post('/auth/google', { credential: idToken });
+    console.log('✅ STEP 4: Backend response:', JSON.stringify(res));
+
+    const payload = res.data || res;
+    if (payload.mfaRequired) {
+      setMfaData(payload.mfaChallenge);
+      setMfaStep(getFirstPendingStep(payload.mfaChallenge, new Set()));
+    } else {
+      await login(payload);
+    }
+
+  } catch (e) {
+    // 🔴 MOST IMPORTANT LOGS
+    console.log('❌ ERROR CODE:', e.code);
+    console.log('❌ ERROR MESSAGE:', e.message);
+    console.log('❌ ERROR nativeErrorMessage:', e.nativeErrorMessage);
+    console.log('❌ FULL ERROR:', JSON.stringify(e));
+
+    if (e.code === statusCodes.SIGN_IN_CANCELLED) {
+      setLoading(false);
+      return;
+    } else if (e.code === statusCodes.IN_PROGRESS) {
+      setError('Google Sign-In is already in progress');
+    } else if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      setError('Play Services not available');
+    } else {
+      // Show exact error in UI bhi
+      setError(`[${e.code}] ${e.nativeErrorMessage || e.message}`);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ── MFA Step Submit ────────────────────────────────────────────────────────
   const submitMfaStep = async () => {
