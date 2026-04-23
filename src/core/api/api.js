@@ -3,9 +3,9 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 🚀 Production backend
-//export const API_BASE_URL = 'https://earnx-backend-9z5t.onrender.com/api';
+export const API_BASE_URL = 'https://earnx-backend-9z5t.onrender.com/api';
 // 🧪 Local dev (uncomment and update IP as needed):
- export const API_BASE_URL = 'http://10.0.3.2:8080/api';
+// export const API_BASE_URL = 'http://10.0.3.2:8080/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

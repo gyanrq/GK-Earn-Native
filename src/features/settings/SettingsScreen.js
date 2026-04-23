@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, StatusBar, Modal, Image,
+  RefreshControl, StatusBar, Modal, Image, Switch
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Button, Input, Card, LoadingScreen, ConfirmModal } from '../../core/ui';
@@ -200,12 +200,16 @@ export default function SettingsScreen() {
         }}
       />
 
+      {/* MFA Modal with Fix Included */}
       <MfaSettingsModal
         visible={section === 'mfa'}
         onClose={() => setSection(null)}
         onSuccess={(mfaEnabled) => {
+          // ✅ FIX: update both local profile state AND persisted userInfo
           setProfile((p) => ({ ...p, mfaEnabled }));
+          updateUserInfo({ mfaEnabled });   // was missing — badge stayed stale
           showToast('✅ MFA settings saved!');
+          setSection(null);
         }}
       />
 
@@ -313,7 +317,7 @@ function ChangePasswordModal({ visible, onClose, onSuccess }) {
   );
 }
 
-// ── Verify Email Modal (for current registered email) ─────────────────────────
+// ── Verify Email Modal ────────────────────────────────────────────────────────
 function VerifyEmailModal({ visible, onClose, onSuccess }) {
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState('');
@@ -374,9 +378,9 @@ function VerifyEmailModal({ visible, onClose, onSuccess }) {
   );
 }
 
-// ── Update Email Modal (change to a NEW email) ─────────────────────────────────
+// ── Update Email Modal ────────────────────────────────────────────────────────
 function UpdateEmailModal({ visible, onClose, onSuccess }) {
-  const [step, setStep] = useState(1); // 1=enter new email, 2=verify OTP
+  const [step, setStep] = useState(1); 
   const [newEmail, setNewEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -450,9 +454,9 @@ function UpdateEmailModal({ visible, onClose, onSuccess }) {
   );
 }
 
-// ── Phone Modal (add/change + verify) ─────────────────────────────────────────
+// ── Phone Modal ───────────────────────────────────────────────────────────────
 function PhoneModal({ visible, currentPhone, onClose, onSuccess }) {
-  const [step, setStep] = useState(1); // 1=enter phone, 2=verify OTP
+  const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -532,7 +536,7 @@ function PhoneModal({ visible, currentPhone, onClose, onSuccess }) {
   );
 }
 
-// ── MFA Settings Modal ────────────────────────────────────────────────────────
+// ── Modernized MFA Settings Modal ──────────────────────────────────────────────
 function MfaSettingsModal({ visible, onClose, onSuccess }) {
   const [mfaSettings, setMfaSettings] = useState(null);
   const [localSettings, setLocalSettings] = useState({
@@ -541,8 +545,8 @@ function MfaSettingsModal({ visible, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [subSection, setSubSection] = useState(null); // 'totp-setup'
-  const [totpData, setTotpData] = useState(null);     // qrDataUri, manualEntryKey
+  const [subSection, setSubSection] = useState(null); 
+  const [totpData, setTotpData] = useState(null);     
   const [totpCode, setTotpCode] = useState('');
   const [totpLoading, setTotpLoading] = useState(false);
   const [totpError, setTotpError] = useState('');
@@ -571,11 +575,19 @@ function MfaSettingsModal({ visible, onClose, onSuccess }) {
   const toggle = (key) => {
     setLocalSettings((prev) => {
       const next = { ...prev, [key]: !prev[key] };
-      // If disabling MFA master toggle, reset all methods
-      if (key === 'mfaEnabled' && !next.mfaEnabled) {
-        next.emailOtpEnabled = false;
-        next.mobileOtpEnabled = false;
-        next.totpEnabled = false;
+      
+      // Smart Toggle Logic
+      if (key === 'mfaEnabled') {
+        if (!next.mfaEnabled) {
+          next.emailOtpEnabled = false;
+          next.mobileOtpEnabled = false;
+          next.totpEnabled = false;
+        } else {
+          // Auto-select Email if nothing else is selected
+          if (!prev.emailOtpEnabled && !prev.mobileOtpEnabled && !prev.totpEnabled) {
+            next.emailOtpEnabled = true;
+          }
+        }
       }
       return next;
     });
@@ -585,9 +597,9 @@ function MfaSettingsModal({ visible, onClose, onSuccess }) {
     setError('');
     if (localSettings.mfaEnabled) {
       const anyEnabled = localSettings.emailOtpEnabled || localSettings.mobileOtpEnabled || localSettings.totpEnabled;
-      if (!anyEnabled) { setError('Enable at least one verification method'); return; }
+      if (!anyEnabled) { setError('Please enable at least one verification method.'); return; }
       if (localSettings.totpEnabled && !mfaSettings?.totpVerified) {
-        setError('Set up Google Authenticator first before enabling TOTP'); return;
+        setError('Set up Google Authenticator first before enabling it.'); return;
       }
     }
     setSaving(true);
@@ -599,8 +611,7 @@ function MfaSettingsModal({ visible, onClose, onSuccess }) {
     } finally { setSaving(false); }
   };
 
-  // TOTP Setup
-  const initTotpSetup = async () => {
+  const initTotpSetup = async () => {  
     setTotpError(''); setTotpLoading(true);
     try {
       const { data } = await api.post('/users/mfa/totp/setup');
@@ -611,25 +622,21 @@ function MfaSettingsModal({ visible, onClose, onSuccess }) {
     } finally { setTotpLoading(false); }
   };
 
-  const verifyTotpSetup = async () => {
+  const verifyTotpSetup = async () => { 
     setTotpError('');
     if (!totpCode.trim()) { setTotpError('Enter the 6-digit code'); return; }
     setTotpLoading(true);
     try {
       await api.post('/users/mfa/totp/verify-setup', { code: totpCode.trim() });
       setMfaSettings((prev) => ({ ...prev, totpVerified: true }));
-      setSubSection(null);
-      setTotpData(null);
-      setTotpCode('');
-      setError('');
-      // Refresh settings
+      setSubSection(null); setTotpData(null); setTotpCode(''); setError('');
       fetchSettings();
     } catch (e) {
       setTotpError(e.response?.data?.message || 'Invalid code. Try again.');
     } finally { setTotpLoading(false); }
   };
 
-  const disableTotp = async () => {
+  const disableTotp = async () => {  
     setError('');
     try {
       await api.delete('/users/mfa/totp');
@@ -641,129 +648,197 @@ function MfaSettingsModal({ visible, onClose, onSuccess }) {
     }
   };
 
-  const ToggleRow = ({ label, desc, value, onToggle, disabled }) => (
+  const ModernToggleRow = ({ label, icon, desc, value, onToggle, disabled, isLast }) => (
     <TouchableOpacity
-      style={[mStyles.toggleRow, disabled && { opacity: 0.4 }]}
-      onPress={!disabled ? onToggle : undefined}
-      activeOpacity={0.7}
+      activeOpacity={disabled ? 1 : 0.7}
+      onPress={disabled ? undefined : onToggle}
+      style={[mStyles.modernRow, !isLast && mStyles.modernRowBorder, disabled && { opacity: 0.45 }]}
     >
-      <View style={{ flex: 1 }}>
-        <Text style={mStyles.toggleLabel}>{label}</Text>
-        {desc ? <Text style={mStyles.toggleDesc}>{desc}</Text> : null}
+      <View style={[mStyles.modernIconContainer, value && mStyles.modernIconContainerActive]}>
+        <Text style={mStyles.modernIcon}>{icon}</Text>
       </View>
-      <View style={[mStyles.toggle, value && mStyles.toggleOn]}>
-        <View style={[mStyles.toggleThumb, value && mStyles.toggleThumbOn]} />
+      <View style={{ flex: 1, paddingRight: 12 }}>
+        <Text style={[mStyles.modernLabel, value && { color: Colors.primary }]}>{label}</Text>
+        {desc ? <Text style={mStyles.modernDesc}>{desc}</Text> : null}
       </View>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        disabled={disabled}
+        trackColor={{ false: '#E5E7EB', true: Colors.primary + 'BB' }}
+        thumbColor={value ? Colors.primary : '#9CA3AF'}
+        ios_backgroundColor="#E5E7EB"
+      />
     </TouchableOpacity>
   );
 
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={mStyles.overlay}>
-        <ScrollView>
-          <View style={[mStyles.box, { maxHeight: '95%' }]}>
-            {subSection === 'totp-setup' ? (
-              <>
-                <Text style={mStyles.title}>🔐 Setup Google Authenticator</Text>
-                {totpError ? <View style={mStyles.errorBox}><Text style={mStyles.errorText}>⚠️ {totpError}</Text></View> : null}
-                <Text style={mStyles.desc}>1. Install Google Authenticator app on your phone.</Text>
-                <Text style={mStyles.desc}>2. Scan the QR code below or enter the key manually.</Text>
-                {totpData?.qrDataUri ? (
-                  <View style={{ alignItems: 'center', marginVertical: 12 }}>
-                    <Image
-                      source={{ uri: totpData.qrDataUri }}
-                      style={{ width: 200, height: 200, borderRadius: 8 }}
-                      resizeMode="contain"
-                    />
-                  </View>
-                ) : null}
-                {totpData?.manualEntryKey ? (
-                  <View style={mStyles.keyBox}>
-                    <Text style={mStyles.keyLabel}>Manual Entry Key:</Text>
-                    <Text style={mStyles.keyText} selectable>{totpData.manualEntryKey}</Text>
-                  </View>
-                ) : null}
-                <Text style={mStyles.desc}>3. Enter the 6-digit code shown in the app to confirm.</Text>
-                <Input
-                  label="Authenticator Code"
-                  value={totpCode}
-                  onChangeText={setTotpCode}
-                  placeholder="6-digit code"
-                  leftIcon="🔐"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-                <View style={mStyles.row}>
-                  <Button title="← Back" variant="outline" onPress={() => setSubSection(null)} style={{ flex: 1 }} />
-                  <Button title="Confirm" onPress={verifyTotpSetup} loading={totpLoading} style={{ flex: 1 }} />
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={mStyles.title}>🛡️ Two-Factor Auth</Text>
-                {error ? <View style={mStyles.errorBox}><Text style={mStyles.errorText}>⚠️ {error}</Text></View> : null}
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled">
+          <View style={[mStyles.box, { maxHeight: '95%', padding: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}>
+            
+            {/* Handle bar */}
+            <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
+              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' }} />
+            </View>
 
+            {/* Header */}
+            <View style={{ paddingHorizontal: Spacing.lg, paddingTop: 8, paddingBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                <View style={mStyles.headerIconBg}>
+                  <Text style={{ fontSize: 22 }}>{subSection === 'totp-setup' ? '🔐' : '🛡️'}</Text>
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={mStyles.title}>{subSection === 'totp-setup' ? 'Setup Authenticator' : 'Security & MFA'}</Text>
+                  <Text style={mStyles.headerSubtitle}>
+                    {subSection === 'totp-setup' ? 'Link your authenticator app' : 'Manage two-factor authentication'}
+                  </Text>
+                </View>
+              </View>
+              {error ? (
+                <View style={mStyles.errorBox}>
+                  <Text style={{ fontSize: 16, marginRight: 6 }}>⚠️</Text>
+                  <Text style={[mStyles.errorText, { flex: 1 }]}>{error}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {subSection === 'totp-setup' ? (
+               <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg }}>
+                 {/* Step indicators */}
+                 <View style={mStyles.stepRow}>
+                   <View style={mStyles.stepDot}><Text style={mStyles.stepNum}>1</Text></View>
+                   <Text style={mStyles.stepText}>Install Google Authenticator on your phone</Text>
+                 </View>
+                 <View style={mStyles.stepRow}>
+                   <View style={mStyles.stepDot}><Text style={mStyles.stepNum}>2</Text></View>
+                   <Text style={mStyles.stepText}>Scan the QR code or enter the key manually</Text>
+                 </View>
+                 <View style={mStyles.stepRow}>
+                   <View style={mStyles.stepDot}><Text style={mStyles.stepNum}>3</Text></View>
+                   <Text style={mStyles.stepText}>Enter the 6-digit code shown in the app</Text>
+                 </View>
+
+                 {totpData?.qrDataUri ? (
+                   <View style={mStyles.qrContainer}>
+                     <View style={mStyles.qrInner}>
+                       <Image source={{ uri: totpData.qrDataUri }} style={{ width: 170, height: 170 }} resizeMode="contain" />
+                     </View>
+                     <Text style={mStyles.qrLabel}>Scan with Authenticator App</Text>
+                   </View>
+                 ) : null}
+
+                 {totpData?.manualEntryKey ? (
+                   <View style={mStyles.keyBox}>
+                     <Text style={mStyles.keyLabel}>MANUAL ENTRY KEY</Text>
+                     <Text style={mStyles.keyText} selectable>{totpData.manualEntryKey}</Text>
+                     <Text style={mStyles.keyHint}>Tap to select and copy</Text>
+                   </View>
+                 ) : null}
+
+                 {totpError ? (
+                   <View style={[mStyles.errorBox, { marginBottom: 8 }]}>
+                     <Text style={mStyles.errorText}>⚠️ {totpError}</Text>
+                   </View>
+                 ) : null}
+
+                 <Input
+                   label="Verification Code"
+                   value={totpCode}
+                   onChangeText={setTotpCode}
+                   placeholder="Enter 6-digit code"
+                   leftIcon="🔐"
+                   keyboardType="number-pad"
+                   maxLength={6}
+                 />
+                 <View style={mStyles.row}>
+                   <Button title="← Back" variant="outline" onPress={() => setSubSection(null)} style={{ flex: 1 }} />
+                   <Button title="Verify & Link" onPress={verifyTotpSetup} loading={totpLoading} style={{ flex: 1 }} />
+                 </View>
+               </View>
+            ) : (
+              <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg }}>
                 {loading ? (
-                  <Text style={{ textAlign: 'center', color: Colors.gray, marginVertical: 20 }}>Loading...</Text>
+                  <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                    <Text style={{ fontSize: 28, marginBottom: 10 }}>🔄</Text>
+                    <Text style={{ textAlign: 'center', color: Colors.gray, fontSize: 14 }}>Loading security settings...</Text>
+                  </View>
                 ) : (
                   <>
-                    <ToggleRow
-                      label="Enable 2FA"
-                      desc="Require extra verification at login"
-                      value={localSettings.mfaEnabled}
-                      onToggle={() => toggle('mfaEnabled')}
-                    />
+                    {/* Master MFA Toggle */}
+                    <View style={mStyles.mfaMasterCard}>
+                      <View style={mStyles.mfaMasterLeft}>
+                        <View style={[mStyles.mfaMasterIcon, localSettings.mfaEnabled && mStyles.mfaMasterIconActive]}>
+                          <Text style={{ fontSize: 24 }}>🛡️</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={mStyles.mfaMasterLabel}>Two-Factor Authentication</Text>
+                          <Text style={mStyles.mfaMasterDesc}>
+                            {localSettings.mfaEnabled ? '✅ Your account is protected' : 'Add an extra layer of security'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={localSettings.mfaEnabled}
+                        onValueChange={() => toggle('mfaEnabled')}
+                        trackColor={{ false: '#E5E7EB', true: Colors.primary + 'BB' }}
+                        thumbColor={localSettings.mfaEnabled ? Colors.primary : '#9CA3AF'}
+                        ios_backgroundColor="#E5E7EB"
+                      />
+                    </View>
 
                     {localSettings.mfaEnabled && (
-                      <View style={mStyles.methodsBox}>
-                        <Text style={mStyles.methodsTitle}>Verification Methods</Text>
-
-                        <ToggleRow
-                          label="📧 Email OTP"
-                          desc="OTP sent to your email"
-                          value={localSettings.emailOtpEnabled}
-                          onToggle={() => toggle('emailOtpEnabled')}
-                        />
-
-                        <ToggleRow
-                          label="📱 Mobile OTP"
-                          desc="OTP sent to your phone (mock in dev)"
-                          value={localSettings.mobileOtpEnabled}
-                          onToggle={() => toggle('mobileOtpEnabled')}
-                        />
-
-                        <View>
-                          <ToggleRow
-                            label="🔐 Google Authenticator"
-                            desc={mfaSettings?.totpVerified ? 'Authenticator app linked ✓' : 'Not set up yet'}
+                      <View style={{ marginTop: 20 }}>
+                        <Text style={mStyles.methodsTitle}>VERIFICATION METHODS</Text>
+                        <Text style={mStyles.methodsSubtitle}>Choose how you receive login codes</Text>
+                        <View style={[mStyles.modernCard, { marginTop: 10 }]}>
+                          <ModernToggleRow
+                            icon="📧"
+                            label="Email OTP"
+                            desc="Codes sent to your registered email"
+                            value={localSettings.emailOtpEnabled}
+                            onToggle={() => toggle('emailOtpEnabled')}
+                          />
+                          <ModernToggleRow
+                            icon="📱"
+                            label="SMS OTP"
+                            desc="Codes sent via text message"
+                            value={localSettings.mobileOtpEnabled}
+                            onToggle={() => toggle('mobileOtpEnabled')}
+                          />
+                          <ModernToggleRow
+                            icon="🔐"
+                            label="Authenticator App"
+                            desc={mfaSettings?.totpVerified ? '✅ App successfully linked' : 'Setup required — tap link below'}
                             value={localSettings.totpEnabled}
                             onToggle={() => toggle('totpEnabled')}
                             disabled={!mfaSettings?.totpVerified}
+                            isLast={true}
                           />
-                          {!mfaSettings?.totpVerified ? (
-                            <Button
-                              title="Set Up Google Authenticator"
-                              variant="outline"
-                              onPress={initTotpSetup}
-                              loading={totpLoading}
-                              style={{ marginTop: 4, marginBottom: 8 }}
-                            />
-                          ) : (
-                            <TouchableOpacity onPress={disableTotp} style={mStyles.removeTotp}>
-                              <Text style={{ color: Colors.danger, fontSize: FontSize.xs }}>Remove Authenticator</Text>
-                            </TouchableOpacity>
-                          )}
                         </View>
+
+                        {/* Authenticator App Actions */}
+                        {!mfaSettings?.totpVerified && localSettings.mfaEnabled ? (
+                          <TouchableOpacity style={mStyles.linkAuthButton} onPress={initTotpSetup} activeOpacity={0.8}>
+                            <Text style={{ fontSize: 18, marginRight: 8 }}>🔗</Text>
+                            <Text style={mStyles.linkAuthText}>Link Google Authenticator</Text>
+                          </TouchableOpacity>
+                        ) : localSettings.mfaEnabled ? (
+                          <TouchableOpacity style={mStyles.removeAuthButton} onPress={disableTotp} activeOpacity={0.8}>
+                            <Text style={mStyles.removeAuthText}>🗑  Remove Authenticator App</Text>
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
                     )}
 
-                    <View style={[mStyles.row, { marginTop: 16 }]}>
+                    <View style={[mStyles.row, { marginTop: 24 }]}>
                       <Button title="Cancel" variant="outline" onPress={onClose} style={{ flex: 1 }} />
-                      <Button title="Save" onPress={saveSettings} loading={saving} style={{ flex: 1 }} />
+                      <Button title="Save Changes" onPress={saveSettings} loading={saving} style={{ flex: 1 }} />
                     </View>
                   </>
                 )}
-              </>
+              </View>
             )}
           </View>
         </ScrollView>
@@ -798,13 +873,136 @@ const styles = StyleSheet.create({
 });
 
 const mStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  box: { backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg },
-  title: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.dark, marginBottom: Spacing.md },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  box: { backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: Spacing.lg },
+  title: { fontSize: 20, fontWeight: '800', color: Colors.dark, marginBottom: 2 },
+  headerSubtitle: { fontSize: 13, color: Colors.gray, marginTop: 1 },
   desc: { fontSize: FontSize.sm, color: Colors.gray, marginBottom: 8 },
   row: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  errorBox: { backgroundColor: '#fff3f3', borderRadius: Radius.md, padding: 10, marginBottom: 12, borderLeftWidth: 3, borderLeftColor: Colors.danger },
+  errorBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3F3', borderRadius: Radius.md, padding: 10, marginBottom: 12, borderLeftWidth: 3, borderLeftColor: Colors.danger },
   errorText: { color: Colors.danger, fontSize: FontSize.sm },
+
+  // Header icon
+  headerIconBg: { width: 52, height: 52, borderRadius: 16, backgroundColor: Colors.primary + '15', justifyContent: 'center', alignItems: 'center' },
+
+  // Master MFA card
+  mfaMasterCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.border || '#E5E7EB',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  mfaMasterLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginBottom: 10 },
+  mfaMasterIcon: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center', alignItems: 'center', marginRight: 12,
+  },
+  mfaMasterIconActive: { backgroundColor: Colors.primary + '18' },
+  mfaMasterLabel: { fontSize: 16, fontWeight: '800', color: Colors.dark },
+  mfaMasterDesc: { fontSize: 12, color: Colors.gray, marginTop: 3, lineHeight: 17 },
+
+  // Methods section
+  methodsTitle: { fontSize: 11, fontWeight: '800', color: Colors.gray, textTransform: 'uppercase', letterSpacing: 1.2 },
+  methodsSubtitle: { fontSize: 12, color: Colors.textLight || Colors.gray, marginTop: 3 },
+
+  // Modern Card (toggle rows)
+  modernCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border || '#E5E7EB',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  modernRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: Colors.white,
+  },
+  modernRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border || '#F3F4F6',
+  },
+  modernIconContainer: {
+    width: 42, height: 42,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: 12,
+  },
+  modernIconContainerActive: {
+    backgroundColor: Colors.primary + '18',
+  },
+  modernIcon: { fontSize: 20 },
+  modernLabel: { fontSize: 14, fontWeight: '700', color: Colors.dark },
+  modernDesc: { fontSize: 12, color: Colors.gray, marginTop: 2, lineHeight: 16 },
+
+  // Action buttons (link / remove authenticator)
+  linkAuthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: Colors.primary + '12',
+    borderWidth: 1.5,
+    borderColor: Colors.primary + '30',
+    borderStyle: 'dashed',
+  },
+  linkAuthText: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
+  removeAuthButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: Colors.danger + '0D',
+  },
+  removeAuthText: { color: Colors.danger, fontWeight: '600', fontSize: 13 },
+
+  // TOTP Setup steps
+  stepRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+  stepDot: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: 10, marginTop: 1,
+  },
+  stepNum: { color: Colors.white, fontSize: 12, fontWeight: '800' },
+  stepText: { flex: 1, fontSize: 13, color: Colors.dark, lineHeight: 20 },
+
+  // QR code
+  qrContainer: { alignItems: 'center', marginVertical: 16 },
+  qrInner: {
+    padding: 12, backgroundColor: Colors.white,
+    borderRadius: 16, borderWidth: 1,
+    borderColor: Colors.border || '#E5E7EB',
+    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 8, elevation: 3,
+  },
+  qrLabel: { marginTop: 10, fontSize: 12, color: Colors.gray, fontWeight: '600' },
+
+  // Key box
+  keyBox: {
+    backgroundColor: '#F0F4FF',
+    borderRadius: 14, padding: 14, marginBottom: 14,
+    borderLeftWidth: 3, borderLeftColor: Colors.primary,
+  },
+  keyLabel: { fontSize: 10, color: Colors.gray, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
+  keyText: { fontSize: 15, fontWeight: '800', color: Colors.primary, letterSpacing: 2.5 },
+  keyHint: { fontSize: 11, color: Colors.gray, marginTop: 6 },
+
+  // Legacy / kept for backward compat
   toggleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
   toggleLabel: { fontSize: FontSize.md, fontWeight: '600', color: Colors.dark },
   toggleDesc: { fontSize: FontSize.xs, color: Colors.gray, marginTop: 2 },
@@ -813,9 +1011,9 @@ const mStyles = StyleSheet.create({
   toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.white, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
   toggleThumbOn: { alignSelf: 'flex-end' },
   methodsBox: { backgroundColor: Colors.background, borderRadius: Radius.md, padding: 12, marginTop: 8, marginBottom: 8 },
-  methodsTitle: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.gray, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
   removeTotp: { paddingVertical: 6, alignItems: 'flex-end' },
-  keyBox: { backgroundColor: '#f0f4ff', borderRadius: Radius.md, padding: 12, marginBottom: 12 },
-  keyLabel: { fontSize: FontSize.xs, color: Colors.gray, fontWeight: '700', marginBottom: 4 },
-  keyText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.primary, letterSpacing: 2 },
+  actionButton: { marginTop: 12, paddingVertical: 10, alignItems: 'center' },
+  actionButtonText: { color: Colors.primary, fontWeight: '700', fontSize: FontSize.sm },
+  actionButtonDanger: { marginTop: 12, paddingVertical: 10, alignItems: 'center' },
+  actionButtonTextDanger: { color: Colors.danger, fontWeight: '600', fontSize: FontSize.sm },
 });
