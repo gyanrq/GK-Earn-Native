@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "compilerOptions": {
     "strict": false,
     "allowJs": false,
@@ -26,12 +25,4 @@
     "android",
     "ios"
   ]
-=======
-  "extends": "@react-native/typescript-config",
-  "compilerOptions": {
-    "types": ["jest"]
-  },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods"]
->>>>>>> 7f9d902cb0b98727791b97e9c15255585bba96cf
 }

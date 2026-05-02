@@ -1,11 +1,11 @@
 // src/AppNavigator.tsx
 // ─────────────────────────────────────────────────────────────────────────────
-// UPDATED NAVIGATION FLOW:
+// NAVIGATION FLOW:
 //
-//   App open → Landing Screen (public, attractive, no login needed)
-//              ↓
-//   User presses Login/Register → Auth Stack
-//              ↓
+//   Fresh install / no token → Landing Screen (public, tasks/offers dikhta hai)
+//                              ↓
+//   User Login/Register button press → Auth Stack
+//                              ↓
 //   After login → Main App (Dashboard tabs)
 //
 //   Token already saved → seedha Main App (no landing, no login)
@@ -36,13 +36,12 @@ function SplashScreen() {
   );
 }
 
-// ── Public Stack (Landing + Auth screens, no login needed) ───────────────────
+// ── Public Stack (Landing pehle, Auth optional) ───────────────────────────────
 function PublicStack() {
   return (
     <Stack.Navigator id={undefined} screenOptions={{ headerShown: false }}>
-      {/* Landing pehle dikhega */}
+      {/* ✅ Landing PEHLE — fresh install pe yahi dikhega */}
       <Stack.Screen name="Landing"       component={LandingScreen} />
-      {/* Auth screens (optional — user tab hi jaata hai jab chahe) */}
       <Stack.Screen name="Login"          component={LoginScreen} />
       <Stack.Screen name="Register"       component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
@@ -54,14 +53,14 @@ function PublicStack() {
 export default function AppNavigator() {
   const { isLoading, userToken } = useAuth();
 
-  // AsyncStorage se token load ho raha hai
+  // AsyncStorage se token load ho raha hai — spinner dikhao
   if (isLoading) return <SplashScreen />;
 
   return (
     <NavigationContainer>
       {userToken
         ? <MainLayout />   // ✅ Token hai → seedha Dashboard
-        : <PublicStack />  // 🏠 Token nahi → Landing screen (Login optional)
+        : <PublicStack />  // 🏠 Token nahi → Landing screen
       }
     </NavigationContainer>
   );
