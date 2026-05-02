@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "strict": false,
+    "allowJs": false,
+    "jsx": "react-native",
+    "lib": ["es2017"],
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "target": "ES2017",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {}
+  },
+  "include": [
+    "src/**/*",
+    "index.ts",
+    "App.tsx",
+    "__tests__/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "android",
+    "ios"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "282729654983",
+    "project_id": "gkearn-4a78d",
+    "storage_bucket": "gkearn-4a78d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:282729654983:android:44691627e6c60cdd13ace2",
+        "android_client_info": {
+          "package_name": "com.gkearnapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "282729654983-gfrmvip6t1doom21hqglqg60si5q1n6a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gkearnapp",
+            "certificate_hash": "833e26c52d803fa1e7ae84cefcac5c5c894e9b25"
+          }
+        },
+        {
+          "client_id": "282729654983-v8k7u7r90k5858bra0stjqgn156e4rbj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gkearnapp",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "282729654983-58lk2ggr2a37ujfr0496782dimplvflr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQMVh8B-bQqZZk71-vTHmSyNOb4cQv2jk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "282729654983-58lk2ggr2a37ujfr0496782dimplvflr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
