@@ -57,7 +57,11 @@ const TAB_ICONS: Record<keyof TabParamList, string> = {
 // ================= MAIN TABS =================
 function MainTabs() {
   return (
+<<<<<<< HEAD
     <Tab.Navigator id={undefined}
+=======
+    <Tab.Navigator
+>>>>>>> 7f9d902cb0b98727791b97e9c15255585bba96cf
       screenOptions={({ route }) => ({
         headerShown: false,
 
@@ -99,7 +103,11 @@ function MainTabs() {
 // ================= APP STACK =================
 function AppStack() {
   return (
+<<<<<<< HEAD
     <Stack.Navigator id={undefined} screenOptions={{ headerShown: false }}>
+=======
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+>>>>>>> 7f9d902cb0b98727791b97e9c15255585bba96cf
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Payout" component={PayoutScreen} />
@@ -112,7 +120,11 @@ function AppStack() {
 // ================= AUTH STACK =================
 function AuthStack() {
   return (
+<<<<<<< HEAD
     <Stack.Navigator id={undefined} screenOptions={{ headerShown: false }}>
+=======
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+>>>>>>> 7f9d902cb0b98727791b97e9c15255585bba96cf
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

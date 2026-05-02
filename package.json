@@ -7,8 +7,12 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
+<<<<<<< HEAD
     "test": "jest",
     "type-check": "tsc --noEmit"
+=======
+    "test": "jest"
+>>>>>>> 7f9d902cb0b98727791b97e9c15255585bba96cf
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^3.0.2",
